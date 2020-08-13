@@ -1,9 +1,13 @@
 import requests
-import threading
+import sys
 from parser import ManifestParser
+from downloader import Downloader
+from interval import RepeatedTimer
 Parser = ManifestParser()
+Downloader = Downloader()
 
 outDir = './manifest'
+timeLimit = 2
 fragStorageBase = 'frags'
 allFrags = []
 isFirstParse = True
@@ -27,11 +31,13 @@ def handleManifestText(manifestText, remoteManifestUrl):
             allFrags.append(lastFrag)
             with open(outDir + '/manifest.m3u8', 'w+') as levelFile:
                 levelFile.write('\n'.join(newManifestLines) + '\n')
+            Downloader.downloadFrag(lastFrag['remoteUrl'], outDir + '/' + lastFrag['storagePath'])
         else:
             lastStoredFragIdx = allFrags[-1]['idx']
             newFrags = list(filter(lambda f: f['idx'] > lastStoredFragIdx, levelInfo['frags']))
             allFrags += newFrags
             newLines = []
+            fragUrls = []
             for fragObj in newFrags:
                 newLines.append('#EXTINF:' + fragObj['tags']['#EXTINF'])
                 newLines.append(fragObj['storagePath'])
@@ -39,12 +45,17 @@ def handleManifestText(manifestText, remoteManifestUrl):
                 with open(outDir + '/manifest.m3u8', 'a') as levelFile:
                     levelFile.write('\n'.join(newLines))
                     levelFile.write('\n')
+                for frag in newFrags:
+                    Downloader.downloadFrag(frag['remoteUrl'], outDir + '/' + frag['storagePath'])
     else:
         pass
 
-
-
-
+def onStop():
+    global outDir
+    with open(outDir + '/manifest.m3u8', 'a') as levelFile:
+        levelFile.write('#EXT-X-ENDLIST')
+        levelFile.write('\n')
+    sys.exit()
 
 
 def requestUrl():
@@ -52,14 +63,6 @@ def requestUrl():
     manifestRequest = requests.get(remoteManifestUrl)
     handleManifestText(manifestRequest.text, remoteManifestUrl)
 
-def set_interval(func, sec):
-    def func_wrapper():
-        set_interval(func, sec)
-        func()
-    t = threading.Timer(sec, func_wrapper)
-    t.start()
-    return t
+k = RepeatedTimer(requestUrl, onStop, 2, 300)
 
-
-set_interval(requestUrl, 1.5)
 
