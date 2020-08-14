@@ -13,6 +13,8 @@ class ManifestParser:
     def parseLevelManifest(self, manifest, manifestUrl, fragStorageBase):
         lines = manifest.split('\n')
         infoDict = {}
+        infoDict['mostRecentKeyLine'] = ''
+        infoDict['endlistTag'] = ''
         frags = []
         currentTags = {}
         currentFragNumber = 0
@@ -22,21 +24,25 @@ class ManifestParser:
                 if not tagInfo:
                     pass
                 else:
-                    if '#EXT-X-VERSION' in tagInfo:
-                        infoDict['version'] = tagInfo['#EXT-X-VERSION']
-                    elif '#EXT-X-MEDIA-SEQUENCE' in tagInfo:
+                    # if '#EXT-X-VERSION' in tagInfo:
+                    #     infoDict['version'] = tagInfo['#EXT-X-VERSION']
+                    if '#EXT-X-MEDIA-SEQUENCE' in tagInfo:
                         mediaSequence = int(tagInfo['#EXT-X-MEDIA-SEQUENCE'])
                         currentFragNumber = mediaSequence
                         infoDict['mediaSequence'] = mediaSequence
-                    elif '#EXT-X-TARGETDURATION' in tagInfo:
-                        infoDict['targetDuration'] = tagInfo['#EXT-X-TARGETDURATION']
-                    elif '#EXT-X-PROGRAM-DATE-TIME' in tagInfo:
-                        pdt = DateParser.parse(tagInfo['#EXT-X-PROGRAM-DATE-TIME'])
-                        infoDict['pdt'] = round(pdt.timestamp() * 1000)
-                    elif '#EXT-X-DISCONTINUITY-SEQUENCE' in tagInfo:
-                        infoDict['discontinuitySequence'] = tagInfo['#EXT-X-DISCONTINUITY-SEQUENCE']
-                    else:
-                        currentTags.update(tagInfo)
+                    elif '#EXT-X-KEY' in tagInfo:
+                        infoDict['mostRecentKeyLine'] = line
+                    elif '#EXT-X-ENDLIST' in tagInfo:
+                        infoDict['endlistTag'] = line
+
+                    # elif '#EXT-X-TARGETDURATION' in tagInfo:
+                    #     infoDict['targetDuration'] = tagInfo['#EXT-X-TARGETDURATION']
+                    # elif '#EXT-X-PROGRAM-DATE-TIME' in tagInfo:
+                    #     pdt = DateParser.parse(tagInfo['#EXT-X-PROGRAM-DATE-TIME'])
+                    #     infoDict['pdt'] = round(pdt.timestamp() * 1000)
+                    # elif '#EXT-X-DISCONTINUITY-SEQUENCE' in tagInfo:
+                    #     infoDict['discontinuitySequence'] = tagInfo['#EXT-X-DISCONTINUITY-SEQUENCE']
+                    currentTags.update(tagInfo)
             elif line and not line.startswith('#'):
                 fullUrl = line
                 storagePath = line
@@ -48,7 +54,7 @@ class ManifestParser:
                     storagePath = line.split('?')[0].split('/')[-1]
                     pass
                 else:
-                    storagePath = line.split('?')[0]
+                    storagePath = '-'.join(line.split('?')[0].split('/'))
                     urlWithoutEnd = os.path.dirname(manifestUrl)
                     fullUrl = urlWithoutEnd + '/' + line
                 frags.append({
@@ -71,6 +77,7 @@ class ManifestParser:
         store = {}
         if len(tagAndData) > 1:
             data = ':'.join(tagAndData[1:])
+            store[tag] = data
             # attributes = data.split(',')
             # if len(list(filter(lambda x: x, attributes))) > 1:
             #     keyDict = {}
@@ -83,7 +90,9 @@ class ManifestParser:
             #         keyDict[name] = val
             #     store[tag] = keyDict
             # else:
-            store[tag] = data
+        else:
+            store[tag] = ''
         return store
 
-    
+    def getMasterInfo(manifestText, url):
+        print(manifestText)

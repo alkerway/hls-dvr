@@ -10,8 +10,11 @@ Downloader = Downloader()
 
 outDir = './manifest'
 pollInterval = 2
-stopAfter = 120
-remoteManifestUrl = 'https://ul.cdn946.net:8443/hls/9uu1uxfe.m3u8?s=pXdJnBv6Jz6LbMgu2wbWvA&e=1597378294'
+stopAfter = 60 * 180
+remoteManifestUrl = 'http://wp.highstream.club/edge/NBA2/playlist.m3u8'
+outputFormat = 'mp4'
+
+sys.stdout = open('log.txt', 'w')
 
 errorCount = 0
 lastFragIdx = -1
@@ -41,11 +44,15 @@ def handleManifestText(manifestText, remoteManifestUrl):
         if isFirstParse:
             isFirstParse = False
             lastFrag = levelInfo['frags'][-1]
+            firstFrag = levelInfo['frags'][0]
+            for key, value in firstFrag['tags'].items():
+                if key == '#EXT-X-MEDIA-SEQUENCE':
+                    newManifestLines.append('#EXT-X-MEDIA-SEQUENCE:' + str(lastFrag['idx']))
+                elif key == '#EXT-X-KEY' and '#EXT-X-KEY' not in lastFrag['tags']:
+                    newManifestLines.append(levelInfo['mostRecentKeyLine'])
+                elif key != '#EXTINF':
+                    newManifestLines.append(f'{key}:{value}' if value else key)
 
-            newManifestLines.append('#EXTM3U')
-            newManifestLines.append('#EXT-X-VERSION:' + levelInfo['version'])
-            newManifestLines.append('#EXT-X-TARGETDURATION:' + levelInfo['targetDuration'])
-            newManifestLines.append('#EXT-X-MEDIA-SEQUENCE:' + str(lastFrag['idx']))
             open(outDir + '/manifest.m3u8', 'w').close()
             newFrags.append(lastFrag)
 
@@ -58,7 +65,10 @@ def handleManifestText(manifestText, remoteManifestUrl):
         fragUrls = []
         for fragObj in newFrags:
             for key, value in fragObj['tags'].items():
-                newManifestLines.append(f'{key}: {value}')
+                if key == '#EXTM3U' and not isFirstParse:
+                    print('CAUTION extinf tag on non first parse\n')
+                else:
+                    newManifestLines.append(f'{key}:{value}' if value else key)
             newManifestLines.append(fragObj['storagePath'])
         if len(newManifestLines):
             with open(outDir + '/manifest.m3u8', 'a') as levelFile:
@@ -71,14 +81,20 @@ def handleManifestText(manifestText, remoteManifestUrl):
                 if lastFragIdx == frag['idx']:
                     print('Downloaded Last Frag Finish!!')
                     formatDownloadedVideo()
+        
+        if levelInfo['endlistTag']:
+            print('Endlist Encountered, exiting')
+            onStop()
             
     else:
         pass
 
 def formatDownloadedVideo():
+    global outputFormat
     print('\n\n')
     print('=============Starting Fomat================')
-    subprocess.call(['ffmpeg','-y','-i', outDir + '/manifest.m3u8', outDir + '/video.mp4'])
+    subprocess.call(['ffmpeg','-y', '-fflags', '+genpts+igndts+nofillin', '-r','30', '-i', outDir + '/manifest.m3u8', outDir + '/video.' + outputFormat])
+    # shutil.rmtree(outDir + '/frags')
 
 
 def onStop():
