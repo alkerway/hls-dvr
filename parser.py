@@ -36,7 +36,6 @@ class ManifestParser:
                     elif '#EXT-X-DISCONTINUITY-SEQUENCE' in tagInfo:
                         infoDict['discontinuitySequence'] = tagInfo['#EXT-X-DISCONTINUITY-SEQUENCE']
                     else:
-
                         currentTags.update(tagInfo)
             elif line and not line.startswith('#'):
                 fullUrl = line
@@ -72,19 +71,19 @@ class ManifestParser:
         store = {}
         if len(tagAndData) > 1:
             data = ':'.join(tagAndData[1:])
-            attributes = data.split(',')
-            if len(list(filter(lambda x: x, attributes))) > 1:
-                keyDict = {}
-                for pair in attributes:
-                    nameAndVal = pair.split('=')
-                    name = nameAndVal[0]
-                    val = '='.join(nameAndVal[1:])
-                    if val[0] == '"' and val[-1] == '"':
-                        val = val[1:-1]
-                    keyDict[name] = val
-                store[tag] = keyDict
-            else:
-                store[tag] = data
+            # attributes = data.split(',')
+            # if len(list(filter(lambda x: x, attributes))) > 1:
+            #     keyDict = {}
+            #     for pair in attributes:
+            #         nameAndVal = pair.split('=')
+            #         name = nameAndVal[0]
+            #         val = '='.join(nameAndVal[1:])
+            #         if val[0] == '"' and val[-1] == '"':
+            #             val = val[1:-1]
+            #         keyDict[name] = val
+            #     store[tag] = keyDict
+            # else:
+            store[tag] = data
         return store
 
     
