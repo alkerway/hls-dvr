@@ -7,7 +7,7 @@ class ManifestParser:
         pass
     def isLevelManifest(self, manifest):
         if not manifest.startswith('#EXTM3U'):
-            raise Exception('Text File Not Manifest')
+            raise Exception('Level Text File Not Manifest')
         return '#EXTINF:' in manifest or '#EXT-X-TARGETDURATION:' in manifest
     
     def parseLevelManifest(self, manifest, manifestUrl, fragStorageBase):
@@ -94,5 +94,25 @@ class ManifestParser:
             store[tag] = ''
         return store
 
-    def getMasterInfo(manifestText, url):
-        print(manifestText)
+    def getMasterInfo(self, manifestText, masterUrl):
+        masterInfo = {
+            'tags': []
+        }
+        textLines = list(filter(lambda x: x, manifestText.split('\n')))
+        if textLines[0] != '#EXTM3U':
+            raise Exception('Master Text File Not Manifest')
+        for eachLine in textLines:
+            if eachLine.startswith('#'):
+                masterInfo['tags'].append(eachLine)
+            else:
+                if eachLine.startswith('http'):
+                    masterInfo['levelRemoteUrl'] = eachLine
+                elif eachLine.startswith('/'):
+                    parseObj = urlparse(masterUrl)
+                    masterInfo['levelRemoteUrl'] = parseObj.scheme + '://' + parseObj.netloc + eachLine
+                else:
+                    masterBase = os.path.dirname(masterUrl)
+                    masterInfo['levelRemoteUrl'] = masterBase + '/' + eachLine
+                return masterInfo
+        raise Exception('Reached end of master file without encountering level url')
+                
