@@ -11,7 +11,9 @@ Downloader = Downloader()
 # sys.stdout = open('./log/python-output.txt', 'w+')
 
 outDir = './manifest'
-pollInterval = 2
+POLL_INTERVAL = 2
+MAX_ERROR_COUNT = 20
+
 stopAfter = 60 * 3
 remoteManifestUrl = 'http://cdn5.hdstreams.club/live/abr_ch3/live/ch3/chunks.m3u8?wmsAuthSign=c2VydmVyX3RpbWU9OS81LzIwMjAgMTA6NTk6MjkgUE0maGFzaF92YWx1ZT1hOW5EU0taWUIrRGF1WjVMYjNsSXdRPT0mdmFsaWRtaW51dGVzPTcyMCZpZD0yMDAxOmJiNjo1OWE5OjE5NTg6MWQ5NDpkNWM1OjkwMjg6NjFhMiZzdHJtX2xlbj01'
 outputFormat = 'mp4'
@@ -167,14 +169,14 @@ def requestUrl():
         print('Error retrieving manifest')
         print(err)
         errorCount += 1
-        if errorCount > 20:
+        if errorCount > MAX_ERROR_COUNT:
             cancelTimer()
             if len(allFrags):
                 onStop()
             raise SystemExit(err)
     except Exception as e:
         errorCount += 1
-        if errorCount > 20:
+        if errorCount > MAX_ERROR_COUNT:
             print('ERROR:' + str(e))
             if len(allFrags):
                 onStop()
@@ -187,6 +189,6 @@ def cancelTimer():
     k.stop()
 
 
-k = RepeatedTimer(requestUrl, onStop, pollInterval, stopAfter)
+k = RepeatedTimer(requestUrl, onStop, POLL_INTERVAL, stopAfter)
 
 
