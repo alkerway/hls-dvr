@@ -52,7 +52,6 @@ class ManifestParser:
                     storagePath = line.split('?')[0].split('/')[-1]
                 elif line.startswith('http'):
                     storagePath = line.split('?')[0].split('/')[-1]
-                    pass
                 else:
                     storagePath = '-'.join(line.split('?')[0].split('/'))
                     urlWithoutEnd = os.path.dirname(manifestUrl)

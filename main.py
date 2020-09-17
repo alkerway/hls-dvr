@@ -8,10 +8,12 @@ from interval import RepeatedTimer
 Parser = ManifestParser()
 Downloader = Downloader()
 
+# sys.stdout = open('./log/python-output.txt', 'w+')
+
 outDir = './manifest'
 pollInterval = 2
-stopAfter = 60 * 120
-remoteManifestUrl = 'https://ul.cdn946.net:8443/hls/xq9w687rkn.m3u8?s=i1GC1uyvEbHzOSPwRVVMQA&e=1597477380'
+stopAfter = 60 * 3
+remoteManifestUrl = 'http://cdn5.hdstreams.club/live/abr_ch3/live/ch3/chunks.m3u8?wmsAuthSign=c2VydmVyX3RpbWU9OS81LzIwMjAgMTA6NTk6MjkgUE0maGFzaF92YWx1ZT1hOW5EU0taWUIrRGF1WjVMYjNsSXdRPT0mdmFsaWRtaW51dGVzPTcyMCZpZD0yMDAxOmJiNjo1OWE5OjE5NTg6MWQ5NDpkNWM1OjkwMjg6NjFhMiZzdHJtX2xlbj01'
 outputFormat = 'mp4'
 
 errorCount = 0
@@ -35,6 +37,7 @@ def handleLevelManifestText(manifestText, remoteLevelUrl):
     global isFirstParse
     global allFrags
     global outDir
+    global errorCount
     levelInfo = Parser.parseLevelManifest(manifestText, remoteLevelUrl, fragStorageBase)
     newManifestLines = []
     newFrags = []
@@ -62,7 +65,7 @@ def handleLevelManifestText(manifestText, remoteLevelUrl):
     fragUrls = []
     for fragObj in newFrags:
         for key, value in fragObj['tags'].items():
-            if key == '#EXTM3U' and not isFirstParse:
+            if (key == '#EXTM3U' or key == '#EXT-X-VERSION') and not isFirstParse:
                 print('CAUTION extinf tag on non first parse\n')
             else:
                 newManifestLines.append(f'{key}:{value}' if value else key)
@@ -78,6 +81,7 @@ def handleLevelManifestText(manifestText, remoteLevelUrl):
             if lastFragIdx == frag['idx']:
                 print('Downloaded Last Frag Finish!!')
                 formatDownloadedVideo()
+        errorCount = 0
     
     if levelInfo['endlistTag']:
         print('Endlist Encountered, exiting')
@@ -109,7 +113,8 @@ def formatDownloadedVideo():
     inputPath,
     # '-r','30',
     '-c', 'copy',
-    outDir + '/video.' + outputFormat]
+    outDir + '/video.' + outputFormat
+    ]
     subprocess.call(ffmpegCommand)
     print(' '.join(ffmpegCommand))
     # shutil.rmtree(outDir + '/frags')
