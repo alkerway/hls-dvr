@@ -8,17 +8,19 @@ from interval import RepeatedTimer
 Parser = ManifestParser()
 Downloader = Downloader()
 
-# sys.stdout = open('./log/python-output.txt', 'w+')
+sys.stdout = open('./log/python-output.txt', 'w+')
 
 outDir = './manifest'
 POLL_INTERVAL = 2
 MAX_ERROR_COUNT = 20
+MAX_STALL_COUNT = 50
 
-stopAfter = 60 * 3
-remoteManifestUrl = 'http://cdn5.hdstreams.club/live/abr_ch3/live/ch3/chunks.m3u8?wmsAuthSign=c2VydmVyX3RpbWU9OS81LzIwMjAgMTA6NTk6MjkgUE0maGFzaF92YWx1ZT1hOW5EU0taWUIrRGF1WjVMYjNsSXdRPT0mdmFsaWRtaW51dGVzPTcyMCZpZD0yMDAxOmJiNjo1OWE5OjE5NTg6MWQ5NDpkNWM1OjkwMjg6NjFhMiZzdHJtX2xlbj01'
+stopAfter = 60 * 60
+remoteManifestUrl = 'https://sgp-haproxy.angelthump.com/hls/chihayalove72/index.m3u8?stream=chihayalove72'
 outputFormat = 'mp4'
 
 errorCount = 0
+stallCount = 0
 lastFragIdx = -1
 fragStorageBase = 'frags'
 masterUrl = ''
@@ -40,6 +42,8 @@ def handleLevelManifestText(manifestText, remoteLevelUrl):
     global allFrags
     global outDir
     global errorCount
+    global stallCount
+
     levelInfo = Parser.parseLevelManifest(manifestText, remoteLevelUrl, fragStorageBase)
     newManifestLines = []
     newFrags = []
@@ -61,6 +65,15 @@ def handleLevelManifestText(manifestText, remoteLevelUrl):
     else:
         lastStoredFragIdx = allFrags[-1]['idx']
         newFrags = list(filter(lambda f: f['idx'] > lastStoredFragIdx, levelInfo['frags']))
+        if len(newFrags) == 0:
+            stallCount += 1
+            if stallCount > MAX_STALL_COUNT:
+                print()
+                print('Stall count more than max stall count, exiting')
+                cancelTimer()
+                if len(allFrags):
+                    onStop()
+                raise SystemExit(err)
     
     allFrags += newFrags
     printStatus()
