@@ -8,15 +8,15 @@ class Downloader:
     def __init__(self):
         pass
     
-    def downloadFrag(self, remoteUrl, storagePath):
+    def downloadFrag(self, remoteUrl, storagePath, referer):
         storageDir = '/'.join(storagePath.split('/')[:-1])
         if not os.path.exists(storageDir):
             os.mkdir(storageDir)
         try:
-            # with open(storagePath, 'wb') as f:
-            #     resp = requests.get(remoteUrl, verify=False)
-            #     f.write(resp)
-            with requests.get(remoteUrl, stream=True, verify=False) as r:
+            headers = None
+            if referer:
+                headers = {'Referer': referer, 'Origin': referer}
+            with requests.get(remoteUrl, headers=headers, stream=True, verify=False) as r:
                 with open(storagePath, 'wb') as f:
                     shutil.copyfileobj(r.raw, f)
         except Exception as e:

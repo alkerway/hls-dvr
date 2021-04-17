@@ -8,17 +8,27 @@ from interval import RepeatedTimer
 Parser = ManifestParser()
 Downloader = Downloader()
 
-sys.stdout = open('./log/python-output.txt', 'w+')
-
 outDir = './manifest'
 POLL_INTERVAL = 2
 MAX_ERROR_COUNT = 20
 MAX_STALL_COUNT = 50
+RECORDING_TIME = 6
 
-stopAfter = 60 * 60
-remoteManifestUrl = 'https://sgp-haproxy.angelthump.com/hls/chihayalove72/index.m3u8?stream=chihayalove72'
+remoteManifestUrl = input('Input Manifest URL:  ')
+if not remoteManifestUrl:
+    remoteManifestUrl = 'http://crack.azzcrackstream.xyz/streams/UFC/chunks.m3u8'
+
+referer = input('Input Referer (optional): ')
+recordTime = input('Input Recording time in hours (default 6): ')
+if recordTime:
+    RECORDING_TIME = float(recordTime)
+
+stopAfter = 60 * 60 * RECORDING_TIME
+
+if len(sys.argv) > 1:
+    sys.stdout = open('./log/python-output.txt', 'w+')
+
 outputFormat = 'mp4'
-
 errorCount = 0
 stallCount = 0
 lastFragIdx = -1
@@ -43,6 +53,7 @@ def handleLevelManifestText(manifestText, remoteLevelUrl):
     global outDir
     global errorCount
     global stallCount
+    global referer
 
     levelInfo = Parser.parseLevelManifest(manifestText, remoteLevelUrl, fragStorageBase)
     newManifestLines = []
@@ -74,6 +85,8 @@ def handleLevelManifestText(manifestText, remoteLevelUrl):
                 if len(allFrags):
                     onStop()
                 raise SystemExit(err)
+        else:
+            stallCount = 0
     
     allFrags += newFrags
     printStatus()
@@ -90,7 +103,7 @@ def handleLevelManifestText(manifestText, remoteLevelUrl):
             levelFile.write('\n'.join(newManifestLines))
             levelFile.write('\n')
         for frag in newFrags:
-            Downloader.downloadFrag(frag['remoteUrl'], outDir + '/' + frag['storagePath'])
+            Downloader.downloadFrag(frag['remoteUrl'], outDir + '/' + frag['storagePath'], referer)
             downloadedFragIndeces.append(frag['idx'])
             printStatus()
             if lastFragIdx == frag['idx']:
@@ -160,8 +173,12 @@ def requestUrl():
     global errorCount
     global remoteManifestUrl
     global masterUrl
+    global referer
+    headers = None
+    if referer:
+        headers = {'Referer': referer, 'Origin': referer}
     try:
-        manifestRequest = requests.get(remoteManifestUrl, verify=False)
+        manifestRequest = requests.get(remoteManifestUrl,headers=headers, verify=False)
         manifestRequest.raise_for_status()
         manifestText = manifestRequest.text
         if Parser.isLevelManifest(manifestText):
